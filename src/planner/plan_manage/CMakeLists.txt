@@ -67,4 +67,5 @@ add_executable(traj_server src/traj_server.cpp)
 target_link_libraries(traj_server ${catkin_LIBRARIES})
 add_dependencies(traj_server ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
-
+add_executable(cmd_to_controller src/cmd_to_controller.cc)
+target_link_libraries(cmd_to_controller ${catkin_LIBRARIES})
