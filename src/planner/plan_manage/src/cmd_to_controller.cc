@@ -10,10 +10,16 @@
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 mavros_msgs::State current_state;
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
+}
+
+geometry_msgs::PoseStamped current_pose;
+void local_pos_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
+    current_pose = *msg;
 }
 
 bool if_cmd_received = false;
@@ -38,6 +44,8 @@ int main(int argc, char **argv){
             ("/planning/pos_cmd", 100, quadrotor_pos_cb);
     ros::Publisher set_pos_pub = nodeHandle.advertise<geometry_msgs::PoseStamped>
             ("/mavros/setpoint_position/local", 10);
+    ros::Subscriber local_pos_sub = nodeHandle.subscribe<geometry_msgs::PoseStamped>
+            ("/mavros/local_position/pose", 10, local_pos_cb);
 
     ros::Rate rate(20);
 
@@ -46,11 +54,15 @@ int main(int argc, char **argv){
         ros::spinOnce();
         rate.sleep();
     }
+    ROS_INFO("fcu connected");
 
     geometry_msgs::PoseStamped pose;
-    pose.pose.position.x = 0;
-    pose.pose.position.y = 0;
-    pose.pose.position.z = 0.8;
+    double init_x = 0;
+    double init_y = 0;
+    double init_z = 0.5;
+    pose.pose.position.x = init_x;
+    pose.pose.position.y = init_y;
+    pose.pose.position.z = init_z;
 
     //send a few set points before starting
     for(int i = 200; ros::ok() && i > 0; --i){
@@ -66,21 +78,27 @@ int main(int argc, char **argv){
     arm_cmd.request.value = true;
 
     ros::Time last_request = ros::Time::now();
+    bool if_offboard = false;
+    bool if_armed = false;
+    bool if_takeoff = false;
+    tf2::Quaternion q;
 
     while(ros::ok()){
-        if( current_state.mode != "OFFBOARD" &&
+        if( current_state.mode != "OFFBOARD" && !if_offboard &&
             (ros::Time::now() - last_request > ros::Duration(5.0))){
             if( set_mode_client.call(offb_set_mode) &&
                 offb_set_mode.response.mode_sent){
                 ROS_INFO("Offboard enabled");
+                if_offboard = true;
             }
             last_request = ros::Time::now();
         } else {
-            if( !current_state.armed &&
+            if( !current_state.armed && !if_armed &&
                 (ros::Time::now() - last_request > ros::Duration(5.0))){
                 if( arming_client.call(arm_cmd) &&
                     arm_cmd.response.success){
                     ROS_INFO("Vehicle armed");
+                    if_armed = true;
                 }
                 last_request = ros::Time::now();
             }
@@ -90,6 +108,25 @@ int main(int argc, char **argv){
             pose.pose.position.x = quad_cmd.position.x;
             pose.pose.position.y = quad_cmd.position.y;
             pose.pose.position.z = quad_cmd.position.z;
+            q.setRPY(0, 0, quad_cmd.yaw);
+            pose.pose.orientation.x = q.x();
+            pose.pose.orientation.y = q.y();
+            pose.pose.orientation.z = q.z();
+            pose.pose.orientation.w = q.w();
+        } else{
+            if (sqrt(pow(current_pose.pose.position.x - init_x, 2) +
+                pow(current_pose.pose.position.x - init_y, 2)+
+                pow(current_pose.pose.position.x - init_z, 2)) > 0.2 && !if_takeoff){
+                pose.pose.position.x = init_x;
+                pose.pose.position.y = init_y;
+                pose.pose.position.z = init_z;
+            }else{
+                pose.pose.position.x = current_pose.pose.position.x;
+                pose.pose.position.y = current_pose.pose.position.y;
+                pose.pose.position.z = current_pose.pose.position.z;
+                if_takeoff = true;
+            }
+
         }
 
         set_pos_pub.publish(pose);
