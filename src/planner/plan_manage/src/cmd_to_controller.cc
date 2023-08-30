@@ -83,6 +83,13 @@ int main(int argc, char **argv){
     bool if_takeoff = false;
     tf2::Quaternion q;
 
+    double origin_x, origin_y, origin_z;
+    double origin_yaw;
+    nodeHandle.getParam("origin_x", origin_x);
+    nodeHandle.getParam("origin_y", origin_y);
+    nodeHandle.getParam("origin_z", origin_z);
+    nodeHandle.getParam("origin_yaw", origin_yaw);
+
     while(ros::ok()){
         if( current_state.mode != "OFFBOARD" && !if_offboard &&
             (ros::Time::now() - last_request > ros::Duration(5.0))){
@@ -108,7 +115,7 @@ int main(int argc, char **argv){
             pose.pose.position.x = quad_cmd.position.x;
             pose.pose.position.y = quad_cmd.position.y;
             pose.pose.position.z = quad_cmd.position.z;
-            q.setRPY(0, 0, quad_cmd.yaw);
+            q.setRPY(0, 0, quad_cmd.yaw + origin_yaw);
             pose.pose.orientation.x = q.x();
             pose.pose.orientation.y = q.y();
             pose.pose.orientation.z = q.z();
@@ -129,6 +136,9 @@ int main(int argc, char **argv){
 
         }
 
+        pose.pose.position.x += origin_x;
+        pose.pose.position.y += origin_y;
+        pose.pose.position_z += origin_z;
         set_pos_pub.publish(pose);
 
         ros::spinOnce();
