@@ -112,8 +112,10 @@ int main(int argc, char **argv){
         }
 
         if(if_cmd_received){
-            pose.pose.position.x = quad_cmd.position.x;
-            pose.pose.position.y = quad_cmd.position.y;
+            double length_xoy = sqrt(quad_cmd.position.x * quad_cmd.position.x +
+                    quad_cmd.position.y * quad_cmd.position.y);
+            pose.pose.position.x = length_xoy * cos(quad_cmd.yaw + origin_yaw);
+            pose.pose.position.y = length_xoy * sin(quad_cmd.yaw + origin_yaw);
             pose.pose.position.z = quad_cmd.position.z;
             q.setRPY(0, 0, quad_cmd.yaw + origin_yaw);
             pose.pose.orientation.x = q.x();
@@ -127,6 +129,11 @@ int main(int argc, char **argv){
                 pose.pose.position.x = init_x;
                 pose.pose.position.y = init_y;
                 pose.pose.position.z = init_z;
+                q.setRPY(0, 0, origin_yaw);
+                pose.pose.orientation.x = q.x();
+                pose.pose.orientation.y = q.y();
+                pose.pose.orientation.z = q.z();
+                pose.pose.orientation.w = q.w();
             }else{
                 pose.pose.position.x = current_pose.pose.position.x;
                 pose.pose.position.y = current_pose.pose.position.y;
@@ -136,9 +143,6 @@ int main(int argc, char **argv){
 
         }
 
-        pose.pose.position.x += origin_x;
-        pose.pose.position.y += origin_y;
-        pose.pose.position_z += origin_z;
         set_pos_pub.publish(pose);
 
         ros::spinOnce();
