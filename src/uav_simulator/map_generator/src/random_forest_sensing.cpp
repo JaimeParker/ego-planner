@@ -417,6 +417,100 @@ void clickCallback(const geometry_msgs::PoseStamped& msg) {
   return;
 }
 
+void setRectPcl(double x, double y, double length, double width) {
+    pcl::PointXYZ pt_random;
+    double h = 2.0;  // height of the obstacle, high enough to avoid jumping through.
+
+    // Calculate the boundaries of the rectangle
+    double x_start = floor(x / _resolution) * _resolution + _resolution / 2.0;
+    double x_end = floor((x + length) / _resolution) * _resolution + _resolution / 2.0;
+    double y_start = floor(y / _resolution) * _resolution + _resolution / 2.0;
+    double y_end = floor((y + width) / _resolution) * _resolution + _resolution / 2.0;
+
+    int x_widNum = ceil((x_end - x_start) / _resolution);
+    int y_widNum = ceil((y_end - y_start) / _resolution);
+
+    for (int r = 0; r < x_widNum; r++)
+        for (int s = 0; s < y_widNum; s++) {
+            int heiNum = ceil(h / _resolution);
+            for (int t = -10; t < heiNum; t++) {
+                pt_random.x = static_cast<float>(x_start + (r + 0.5) * _resolution + 1e-2);
+                pt_random.y = static_cast<float>(y_start + (s + 0.5) * _resolution + 1e-2);
+                pt_random.z = static_cast<float>((t + 0.5) * _resolution + 1e-2);
+                cloudMap.points.push_back(pt_random);
+            }
+        }
+}
+
+void generateRectObstacle() {
+    std::vector<std::array<double, 4>> rect_obs = {
+        // scene11
+        // {-0.5, 1.0, 0.5, 1.5},
+        // {0.0, 0.5, 4.0, 0.5},
+        // {0.0, 2.5, 2.0, 0.5},
+        // {1.0, 2.5, 1.0, 4.0},
+        // {4.0, 1.0, 1.0, 3.0},
+        // {2.0, 5.5, 4.0, 1.0},
+        // {5.0, 3.0, 4.0, 1.0},
+        // {8.0, 4.0, 1.0, 4.0},
+        // {5.0, 6.5, 1.0, 3.5},
+        // {6.0, 9.5, 3.5, 0.5}
+
+        // scene12
+        // {0.0, 0.0, 7.0, 1.0},
+        // {0.0, 3.0, 3.0, 1.0},
+        // {5.0, 1.0, 2.0, 6.0},
+        // {2.0, 4.0, 1.0, 6.0},
+        // {3.0, 9.0, 7.0, 1.0},
+        // {7.0, 4.0, 3.0, 1.0},
+        // {9.0, 7.0, 1.0, 2.0}
+
+        // scene13
+        {0.0, 1.0, 5.0, 0.2},
+        {0.0, 3.0, 3.0, 1.0},
+        {1.0, 4.0, 1.0, 6.0},
+        {2.0, 9.0, 3.0, 0.5},
+        {3.5, 6.0, 1.5, 1.0},
+        {4.0, 7.0, 3.0, 0.2},
+        {4.0, 9.0, 1.0, 3.0},
+        {5.0, 1.5, 0.5, 6.0},
+        {5.0, 1.2, 7.0, 0.5},
+        {7.0, 4.0, 3.0, 1.0},
+        {7.0, 7.0, 0.2, 3.0},
+        {7.0, 9.0, 1.0, 1.0},
+        {8.0, 3.0, 1.0, 1.0},
+        {9.0, 7.0, 1.0, 1.0},
+        {10.0, 5.0, 0.4, 7.0}
+
+        //scene15
+        // {0, 0, 12, 0.2},
+        // {0, 0, 0.2, 12},
+        // {0, 11.8, 12, 0.2},
+        // {11.8, 0, 0.2, 12},
+        // {2, 0, 1, 2},
+        // {0, 4, 4, 1},
+        // {6, 0, 1, 6},
+        // {0, 8, 8, 1},
+        // {10, 0, 1, 10}
+
+    };
+
+    for (auto rect : rect_obs) {
+        setRectPcl(rect[0], rect[1], rect[2], rect[3]);
+    }
+
+    cloudMap.width = cloudMap.points.size();
+    cloudMap.height = 1;
+    cloudMap.is_dense = true;
+
+    ROS_WARN("Finished generate random map ");
+
+    kdtreeLocalMap.setInputCloud(cloudMap.makeShared());
+
+    _map_ok = true;
+}
+
+
 int main(int argc, char** argv) {
   ros::init(argc, argv, "random_map_sensing");
   ros::NodeHandle n("~");
@@ -468,7 +562,8 @@ int main(int argc, char** argv) {
   ros::Duration(0.5).sleep();
 
   // RandomMapGenerate();
-  RandomMapGenerateCylinder();
+//   RandomMapGenerateCylinder();
+    generateRectObstacle();
 
   ros::Rate loop_rate(_sense_rate);
 
