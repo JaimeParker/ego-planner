@@ -17,9 +17,20 @@ void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
 }
 
+bool if_init_pose_set = false;
+double init_x, init_y;
+double init_z = 1.0; // default takeoff height
 geometry_msgs::PoseStamped current_pose;
 void local_pos_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
     current_pose = *msg;
+    if (!if_init_pose_set){
+        ROS_INFO("init pos set to: %f, %f, %f", current_pose.pose.position.x,
+                 current_pose.pose.position.y, current_pose.pose.position.z);
+        init_x = current_pose.pose.position.x;
+        init_y = current_pose.pose.position.y;
+        ROS_INFO("takeoff height set to: %f", init_z);
+        if_init_pose_set = true;
+    }   
 }
 
 bool if_cmd_received = false;
@@ -57,9 +68,6 @@ int main(int argc, char **argv){
     ROS_INFO("fcu connected");
 
     geometry_msgs::PoseStamped pose;
-    double init_x = 0;
-    double init_y = 0;
-    double init_z = 0.5;
     pose.pose.position.x = init_x;
     pose.pose.position.y = init_y;
     pose.pose.position.z = init_z;
@@ -112,12 +120,12 @@ int main(int argc, char **argv){
         }
 
         if(if_cmd_received){
-            double length_xoy = sqrt(quad_cmd.position.x * quad_cmd.position.x +
-                    quad_cmd.position.y * quad_cmd.position.y);
-            pose.pose.position.x = length_xoy * cos(quad_cmd.yaw + origin_yaw);
-            pose.pose.position.y = length_xoy * sin(quad_cmd.yaw + origin_yaw);
+            // use ego-planner pos ctrl
+            // NOTE: vel need to be lower than 0.5m/s to ensure safety in pos ctrl
+            pose.pose.position.x = quad_cmd.position.x;
+            pose.pose.position.y = quad_cmd.position.y;
             pose.pose.position.z = quad_cmd.position.z;
-            q.setRPY(0, 0, quad_cmd.yaw + origin_yaw);
+            q.setRPY(0, 0, quad_cmd.yaw);
             pose.pose.orientation.x = q.x();
             pose.pose.orientation.y = q.y();
             pose.pose.orientation.z = q.z();
@@ -126,15 +134,17 @@ int main(int argc, char **argv){
             if (sqrt(pow(current_pose.pose.position.x - init_x, 2) +
                 pow(current_pose.pose.position.x - init_y, 2)+
                 pow(current_pose.pose.position.x - init_z, 2)) > 0.2 && !if_takeoff){
+                // keep taking off if not in the takeoff area
                 pose.pose.position.x = init_x;
                 pose.pose.position.y = init_y;
                 pose.pose.position.z = init_z;
-                q.setRPY(0, 0, origin_yaw);
-                pose.pose.orientation.x = q.x();
-                pose.pose.orientation.y = q.y();
-                pose.pose.orientation.z = q.z();
-                pose.pose.orientation.w = q.w();
+                // q.setRPY(0, 0, origin_yaw);
+                // pose.pose.orientation.x = q.x();
+                // pose.pose.orientation.y = q.y();
+                // pose.pose.orientation.z = q.z();
+                // pose.pose.orientation.w = q.w();
             }else{
+                // takeoff done, keep hovering
                 pose.pose.position.x = current_pose.pose.position.x;
                 pose.pose.position.y = current_pose.pose.position.y;
                 pose.pose.position.z = current_pose.pose.position.z;
@@ -148,7 +158,5 @@ int main(int argc, char **argv){
         ros::spinOnce();
         rate.sleep();
     }
-
-
 }
 
