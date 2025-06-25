@@ -8,6 +8,7 @@
 #include <sensor_msgs/Imu.h>
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
+#include <std_msgs/Float32.h>
 #include <vector>
 #include <visualization_msgs/Marker.h>
 
@@ -98,6 +99,11 @@ namespace ego_planner
     void odometryCallback(const nav_msgs::OdometryConstPtr &msg);
 
     bool checkCollision();
+
+    /* Zhaohong functions for height change */
+    ros::Subscriber height_change_sub_;
+    void heightChangeCallback(const std_msgs::Float32ConstPtr &msg);
+    double cruise_height_ = 1.0;
 
   public:
     EGOReplanFSM(/* args */)
