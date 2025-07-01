@@ -75,7 +75,7 @@
     <param name="grid_map/map_size_z"   value="$(arg map_size_z_)" /> 
     <param name="grid_map/local_update_range_x"  value="10.0" /> 
     <param name="grid_map/local_update_range_y"  value="10.0" /> 
-    <param name="grid_map/local_update_range_z"  value="4.5" /> 
+    <param name="grid_map/local_update_range_z"  value="10.0" /> 
     <param name="grid_map/obstacles_inflation"     value="0.2" /> 
     <param name="grid_map/local_map_margin" value="30"/>
     <param name="grid_map/ground_height"        value="-0.01"/>
@@ -102,7 +102,7 @@
     <param name="grid_map/max_ray_length" value="9.0"/>
 
     <param name="grid_map/virtual_ceil_height"   value="2.5"/>
-    <param name="grid_map/visualization_truncate_height"   value="2.4"/>
+    <param name="grid_map/visualization_truncate_height"   value="10.0"/>
     <param name="grid_map/show_occ_time"  value="false"/>
     <param name="grid_map/pose_type"     value="2"/>  
     <param name="grid_map/frame_id"      value="world"/>
